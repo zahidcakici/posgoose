@@ -1,0 +1,45 @@
+services:
+  bench-postgres:
+    image: postgres:18
+    container_name: bench-postgres
+    environment:
+      POSTGRES_USER: bench
+      POSTGRES_PASSWORD: bench
+      POSTGRES_DB: bench
+    ports:
+      - "5434:5432"
+    command: >
+      postgres
+      -c shared_buffers=128MB
+      -c work_mem=8MB
+      -c max_connections=50
+      -c synchronous_commit=off
+      -c checkpoint_completion_target=0.9
+      -c effective_cache_size=256MB
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bench -d bench"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  bench-mongo:
+    image: mongo:8
+    container_name: bench-mongo
+    ports:
+      - "27017:27017"
+    command: mongod --wiredTigerCacheSizeGB 0.25
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')", "--quiet"]
+      interval: 5s
+      timeout: 10s
+      retries: 10

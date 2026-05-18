@@ -1,0 +1,111 @@
+name: CI · Release
+
+on:
+  push:
+    branches: [main]
+
+# Never cancel a release in progress — let it finish cleanly.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ── 1. Build + lint + test ─────────────────────────────────────
+  test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: posgoose
+          POSTGRES_PASSWORD: posgoose
+          POSTGRES_DB: posgoose_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Type-check
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+        env:
+          TEST_DATABASE_URL: postgresql://posgoose:posgoose@localhost:5432/posgoose_test
+
+      - name: Build
+        run: npm run build
+
+  # ── 2. Publish — only when package.json version is not yet on npm ──
+  publish:
+    name: Publish
+    needs: test
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write   # push git tags + create GitHub releases
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history required to push new tags
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Check whether this version needs publishing
+        id: version
+        run: |
+          PKG=$(node -p "require('./package.json').version")
+          NPM=$(npm view posgoose version 2>/dev/null || echo "0.0.0")
+          echo "pkg=$PKG" >> "$GITHUB_OUTPUT"
+          if [ "$PKG" != "$NPM" ]; then
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "new=false" >> "$GITHUB_OUTPUT"
+            echo "Version $PKG is already published on npm — skipping."
+          fi
+
+      - name: Push git tag
+        if: steps.version.outputs.new == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v${{ steps.version.outputs.pkg }}"
+          git push origin "v${{ steps.version.outputs.pkg }}"
+
+      - name: Create GitHub release
+        if: steps.version.outputs.new == 'true'
+        run: |
+          gh release create "v${{ steps.version.outputs.pkg }}" \
+            --title "v${{ steps.version.outputs.pkg }}" \
+            --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to npm
+        if: steps.version.outputs.new == 'true'
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -1,0 +1,20 @@
+{
+  "name": "posgoose-benchmark",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "seed": "ts-node --project tsconfig.json src/seed.ts",
+    "bench:findOne": "ts-node --project tsconfig.json src/bench-findOne.ts",
+    "bench:updateOne": "ts-node --project tsconfig.json src/bench-updateOne.ts",
+    "bench": "ts-node --project tsconfig.json src/run.ts"
+  },
+  "dependencies": {
+    "mongoose": "^9.0.0",
+    "posgoose": "file:.."
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.0"
+  }
+}

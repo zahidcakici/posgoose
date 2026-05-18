@@ -1,0 +1,32 @@
+version: 2
+updates:
+  # Root package — production + dev dependencies
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      dev-dependencies:
+        dependency-type: development
+        patterns: ["*"]
+
+  # Benchmark folder has its own package.json
+  - package-ecosystem: npm
+    directory: "/benchmark"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      benchmark-deps:
+        patterns: ["*"]
+
+  # Keep GitHub Actions up to date
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
