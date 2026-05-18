@@ -34,7 +34,7 @@
   "author": "Zahid Cakici <zahid.cakici@gmail.com>",
   "license": "MIT",
   "repository": {
-    "url": "https://github.com/zahidcakici/posgoose"
+    "url": "git+https://github.com/zahidcakici/posgoose.git"
   },
   "dependencies": {
     "pg": "^8.21.0",
